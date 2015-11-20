@@ -3,32 +3,32 @@ import params
 import numpy as np
 import math
 
-def f_logistic(x, k, c):
+def f_logistic(x, k, c, l):
     # Function to fit the data bin output from the raw plot function
-    L = 1 + np.exp(c)
+    L = l*(1 + np.exp(c))
     r = L / (1.0 + np.exp(-k * x + c))
     return r
   
 
-def f_inv(x,k,c):
+#def f_inv(x,k,c):
     # Function to fit the data bin output from the raw plot function
-    r = 1/(1 + k*((-x))**c)
+    #r = 1/(1 + k*((-x))**c)
+    #return r
+
+
+def f_exp_pow(x, k, c,l):
+    # Function to fit the data bin output from the raw plot function
+    r = l*np.exp(-k * (-x) ** c)
     return r
 
-
-def f_exp_pow(x, k, c):
-    # Function to fit the data bin output from the raw plot function
-    r = np.exp(-k * (-x) ** c)
-    return r
-
-def i_f_logistic(y, k, c):
+def i_f_logistic(y, k, c,l):
     # inverse of f_logistic
-    L = 1 + np.exp(c)
+    L = l*(1 + np.exp(c))
     x = -(np.log(L / y - 1) - c) / k
     return x
 
 
-def i_f_exp_pow(y, k, c):
+def i_f_exp_pow(y, k, c,l):
     # inverse of f_exp_pow
     ok = k > 0
     x = np.zeros_like(y) - np.inf
@@ -39,26 +39,28 @@ def i_f_exp_pow(y, k, c):
 
 function_dictionary = {}
 function_dictionary['func'] = {0: f_logistic,
-                               1: f_inv,
-                               2: f_exp_pow
+                               1: f_exp_pow,
+                               #2: f_inv
                                }
+
 function_dictionary['bounds'] = {0: params.logistic_bounds,
-                                 1: params.inverse_bounds,
-                                 2: params.exponential_bounds
+                                 1: params.exponential_bounds
+                                 #2: params.inverse_bounds,
                                  }
-function_dictionary['p0'] = {0: [3,-3],
-                             1: [1,1],
-                             2: [2,1]
+
+function_dictionary['p0'] = {0: [3,-3,1],
+                             1: [2,1,1],
+                             #2: [1,1]
                              }
 
 function_dictionary['i_func'] = {0: i_f_logistic,
-                       1: None,
-                       2: i_f_exp_pow
-                       }
+                                 1: i_f_exp_pow
+                                 #2:None
+                                 }
 
 function_dictionary['label'] = {0: 'logistic',
-                                 1: 'inverse',
-                                 2: 'exp. power'
+                                1: 'exp. power'
+                                #2:'inverse'
                                  }
 
 # Make the question dictionary:

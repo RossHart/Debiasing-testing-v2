@@ -162,7 +162,7 @@ voronoi_bins = voronoi_assignment(all_data, rect_bins_table, rect_vbins_table)
 # Now make some plots to show the voronoi bins:
 
 # First check if the directory exists:
-os.makedirs('figures/voronoi_binning/') if os.path.isdir('figures/voronoi_binning/') is False
+os.makedirs('figures/voronoi_binning/') if os.path.isdir('figures/voronoi_binning/') is False else None
 
 # Bin count histogram:
 count = vbins_table['count_gals']
