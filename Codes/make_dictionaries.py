@@ -6,20 +6,16 @@ import math
 def f_logistic(x, k, c, l):
     # Function to fit the data bin output from the raw plot function
     L = l*(1 + np.exp(c))
+    L = 1
     r = L / (1.0 + np.exp(-k * x + c))
     return r
-  
-
-#def f_inv(x,k,c):
-    # Function to fit the data bin output from the raw plot function
-    #r = 1/(1 + k*((-x))**c)
-    #return r
 
 
 def f_exp_pow(x, k, c,l):
     # Function to fit the data bin output from the raw plot function
     r = l*np.exp(-k * (-x) ** c)
     return r
+
 
 def i_f_logistic(y, k, c,l):
     # inverse of f_logistic

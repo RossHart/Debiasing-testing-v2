@@ -10,6 +10,6 @@ question_dictionary = 'questions.pickle'
 
 bins_to_plot = [5,10,15,20] # Only plot this/these voronoi bins.
 
-logistic_bounds = ((0.5, 6), (-7.5, 0), (1,2))
-exponential_bounds = ((0.01, 5), (0.01, 10), (1,2))
-inverse_bounds = ((0.01,20),(0.01,5))
+logistic_bounds = ((0.5, 10), (-10, 10), (0.1,100))
+exponential_bounds = ((10**(-5),10**(5)),(10**(-5),10**(5)),(0.5,1.5))
+#exponential_bounds = ((0.01,5),(0.01,5),(0.5,1.5))
