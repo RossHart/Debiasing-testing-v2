@@ -3,28 +3,27 @@ import params
 import numpy as np
 import math
 
-def f_logistic(x, k, c, l):
+def f_logistic(x, k, c):
     # Function to fit the data bin output from the raw plot function
-    L = l*(1 + np.exp(c))
-    L = 1
+    L = (1 + np.exp(c))
     r = L / (1.0 + np.exp(-k * x + c))
     return r
 
 
-def f_exp_pow(x, k, c,l):
+def f_exp_pow(x, k, c):
     # Function to fit the data bin output from the raw plot function
-    r = l*np.exp(-k * (-x) ** c)
+    r = np.exp(-k * (-x) ** c)
     return r
 
 
-def i_f_logistic(y, k, c,l):
+def i_f_logistic(y, k, c):
     # inverse of f_logistic
-    L = l*(1 + np.exp(c))
+    L = (1 + np.exp(c))
     x = -(np.log(L / y - 1) - c) / k
     return x
 
 
-def i_f_exp_pow(y, k, c,l):
+def i_f_exp_pow(y, k, c):
     # inverse of f_exp_pow
     ok = k > 0
     x = np.zeros_like(y) - np.inf
@@ -44,8 +43,8 @@ function_dictionary['bounds'] = {0: params.logistic_bounds,
                                  #2: params.inverse_bounds,
                                  }
 
-function_dictionary['p0'] = {0: [3,-3,1],
-                             1: [2,1,1],
+function_dictionary['p0'] = {0: [3,-3],
+                             1: [2,1],
                              #2: [1,1]
                              }
 
