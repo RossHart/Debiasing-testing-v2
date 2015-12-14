@@ -27,14 +27,17 @@ def sort_data(D):
     return D_table
 
 
-def debias(data,vbins,zbins,question,answer):
+def debias(data,full_data,vbins,zbins,vbins_all,zbins_all,question,answer):
     
     fraction_column = question + '_' + answer + '_weighted_fraction'
     data_column = data[fraction_column]
-    debiased_column = np.zeros(len(data_column))
+    all_data_column = full_data[fraction_column]
+    
+    debiased_column = np.zeros(len(all_data_column))
 
     for v in np.unique(vbins):
         select_v = vbins == v
+        select_v_all = vbins_all == v
         zbins_v = zbins[select_v]
         
         data_v0 = data_column[(select_v) & (zbins == 1)]
@@ -42,14 +45,21 @@ def debias(data,vbins,zbins,question,answer):
 
         for z in np.unique(zbins_v):
             select_z = zbins == z
+            select_z_all = zbins_all == z
     
             data_vz = data_column[(select_v) & (select_z)]
             vz_table = sort_data(data_vz)
+            
+            all_data_vz = all_data_column[(select_v_all) & (select_z_all)] 
+            all_vz_table = sort_data(all_data_vz)
+            
+            fv_i = find_nearest(vz_table['fv'],all_vz_table['fv'])
+            all_vz_table['cumfrac'] = vz_table['cumfrac'][fv_i]
     
-            debiased_i = find_nearest(v0_table['cumfrac'],vz_table['cumfrac'])
+            debiased_i = find_nearest(v0_table['cumfrac'],all_vz_table['cumfrac'])
             debiased_fractions = v0_table['fv'][debiased_i]
             
-            debiased_column[(select_v) & (select_z)] = debiased_fractions
+            debiased_column[(select_v_all) & (select_z_all)] = debiased_fractions
     
     debiased_column[data_column == 0] = 0 # Don't 'debias up' 0s.
     debiased_column[data_column == 1] = 1 # Don't 'debias down' the 1s.

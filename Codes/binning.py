@@ -173,7 +173,7 @@ def redshift_assignment(data,vbins,zbin_ranges):
     return zbins
   
   
-def bin_data(data,question,answer,n_vbins=40,signal=100,plot=True):
+def bin_data(data,full_data,question,answer,n_vbins=40,signal=100,plot=True):
   
     raw_column = data[question + '_' + answer + '_weighted_fraction']
     fv_nonzero = raw_column > 0 # Select only the non-zero data to add to the 'signal' for each bin.
@@ -191,9 +191,14 @@ def bin_data(data,question,answer,n_vbins=40,signal=100,plot=True):
     vbins = voronoi_assignment(data, rect_bins_table, rect_vbins_table,
                            Mr_bins_min, Mr_bins_range, R50_bins_min, R50_bins_range,
                            reassign=True)
-    
     zbins = redshift_assignment(data,vbins,zbin_ranges)
     zbins_coarse = redshift_assignment(data,vbins,zbin_ranges_coarse)
+    
+    vbins_all = voronoi_assignment(full_data, rect_bins_table, rect_vbins_table,
+                           Mr_bins_min, Mr_bins_range, R50_bins_min, R50_bins_range,
+                           reassign=True)
+    zbins_all = redshift_assignment(full_data,vbins,zbin_ranges)
+    zbins_coarse_all = redshift_assignment(full_data,vbins,zbin_ranges_coarse)
     
     N_v = np.unique(vbins)
     N_z = []
@@ -229,4 +234,4 @@ def bin_data(data,question,answer,n_vbins=40,signal=100,plot=True):
         
         plt.savefig('figures/voronoi_binning/{}_{}.png'.format(question,answer))
         
-    return vbins,zbins,zbins_coarse,vbins_table
+    return vbins,zbins,zbins_coarse,vbins_all,zbins_all,zbins_coarse_all,vbins_table
