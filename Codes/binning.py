@@ -1,10 +1,11 @@
 import numpy as np
+import math
 from voronoi_2d_binning import voronoi_2d_binning
 from sklearn.neighbors import NearestNeighbors
 from astropy.table import Table
 import matplotlib.pyplot as plt
 
-def voronoi_binning(R50, Mr, n_rect_bins=500, n_per_voronoi_bin=5000,save=False):
+def voronoi_binning(R50, Mr,n_rect_bins=500, n_per_voronoi_bin=5000,save=False):
     
     rect_bin_val, R50_bin_edges, Mr_bin_edges = np.histogram2d(R50, Mr, n_rect_bins)
 
@@ -75,11 +76,11 @@ def voronoi_binning(R50, Mr, n_rect_bins=500, n_per_voronoi_bin=5000,save=False)
         vbins_table.write(save_directory + 'vbins_table.fits', overwrite=True)
         rect_vbins_table.write(save_directory + 'rect_vbins_table.fits', overwrite=True)
         
-    plt.hist(vbins_table['count_gals'],histtype='stepfilled',color='b',alpha=0.5,linewidth=0)
-    ylims = plt.gca().get_ylim()
-    plt.vlines(n_per_voronoi_bin,ylims[0],ylims[1],color='k',linewidth=3,linestyle='dotted')
-    plt.ylabel('$N_{bin}$')
-    plt.xlabel('$N_{gal}$')
+    #plt.hist(vbins_table['count_gals'],histtype='stepfilled',color='b',alpha=0.5,linewidth=0)
+    #ylims = plt.gca().get_ylim()
+    #plt.vlines(n_per_voronoi_bin,ylims[0],ylims[1],color='k',linewidth=3,linestyle='dotted')
+    #plt.ylabel('$N_{bin}$')
+    #plt.xlabel('$N_{gal}$')
     
     # rect_bins_table: contains all of the bin edges (len=N_bins)
     # rect_vbins_table: has bin centre values + assigned v-bin (len=N_bins**2)
@@ -173,15 +174,21 @@ def redshift_assignment(data,vbins,zbin_ranges):
     return zbins
   
   
-def bin_data(data,full_data,question,answer,n_vbins=40,signal=100,plot=True):
+def bin_data(data,full_data,question,answer,n_vbins=30,signal=100,plot=True):
   
     raw_column = data[question + '_' + answer + '_weighted_fraction']
     fv_nonzero = raw_column > 0 # Select only the non-zero data to add to the 'signal' for each bin.
     
     R50 = data['PETROR50_R_KPC'][fv_nonzero]
+    
+    npv = np.sum(fv_nonzero)/(n_vbins)
+    nrb = math.floor(np.sqrt(np.sum(fv_nonzero)))
+    
     rect_bins_table,vbins_table,rect_vbins_table,Mr_bins_min,Mr_bins_range,R50_bins_min,R50_bins_range = voronoi_binning(np.log10(R50),
                                                                                                                          data['PETROMAG_MR'][fv_nonzero],
-                                                                                                                         n_per_voronoi_bin=np.sum(fv_nonzero)/n_vbins)
+                                                                                                                         n_rect_bins=nrb,
+                                                                                                                         n_per_voronoi_bin=npv)
+    
 
     vbins = voronoi_assignment(data[fv_nonzero],rect_bins_table,rect_vbins_table,Mr_bins_min,
                                Mr_bins_range, R50_bins_min, R50_bins_range)

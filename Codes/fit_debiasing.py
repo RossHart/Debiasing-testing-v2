@@ -14,33 +14,64 @@ def make_fit_setup(function_dictionary,key):
 
 
 def get_best_function(data,vbins,zbins,function_dictionary
-		      ,question,answer,min_log_fv):
+                      ,question,answer,min_log_fv):
+  
+    # Find suitable p0 values from fits to the overall data:
+    fv_all = np.sort(data[question + '_' + answer + '_weighted_fraction'])
+    fv_nonzero = fv_all != 0
+    cf = np.linspace(0,1,len(fv_all))
+    x,y = [np.log10(fv_all[fv_nonzero]),cf[fv_nonzero]]
+    
+    x_fit = np.log10(np.linspace(10**(min_log_fv), 1, 100))
+    indices = np.searchsorted(x,x_fit)
+    y_fit = y[indices.clip(0, len(y)-1)]
     
     chisq_tot = np.zeros(len(function_dictionary['func'].keys()))
     k_tot = np.zeros(len(function_dictionary['func'].keys()))
     c_tot = np.zeros(len(function_dictionary['func'].keys()))
     
     for n,key in enumerate(function_dictionary['func'].keys()):
-
+        # Overall data fitting:
         fit_setup = make_fit_setup(function_dictionary,key)
-        fit_vbin_results = fit_vbin_function(data,vbins,zbins,fit_setup,
-					     question,answer,min_log_fv)
+        func = fit_setup['func']
+        p0 = fit_setup['p0']
+        bounds = fit_setup['bounds']
         
-        chisq = np.sum(fit_vbin_results['chi2nu'])
+        res =  minimize(chisq_fun, p0,
+                        args=(func,x_fit,y_fit),
+                        bounds=bounds,method='SLSQP')
+        
+        function_dictionary['p0'][key] = res.x
+        
+        if res.success == False:
+            print('Failed to minimise total dataset')
+            popt,pcov = curve_fit(func,x_fit,y_fit,maxfev=10**5) # unbounded
+            res =  minimize(chisq_fun, popt,
+                        args=(func,x_fit,y_fit),
+                        bounds=bounds,method='SLSQP')
+            if res.success == False:
+                print('Still failed to minimise!')    
+        
+        fit_vbin_results = fit_vbin_function(data,vbins,zbins,fit_setup,
+                                             question,answer,min_log_fv)
+
+        finite_chisq = np.isfinite(fit_vbin_results['chi2nu'])
+        # Deal with chisq nans here.
+        chisq = np.sum(fit_vbin_results['chi2nu'][finite_chisq])/(np.sum(finite_chisq))
         k = np.mean(fit_vbin_results['k'])
         c = np.mean(fit_vbin_results['c'])
         
         chisq_tot[n] = chisq
         k_tot[n] = k
         c_tot[n] = c
+        
         print('chisq({}) = {}'.format(function_dictionary['label'][key],chisq))
     
     n = np.argmin(chisq_tot)
     keys = [key for key in function_dictionary['func'].keys()]
     key = keys[n]
     fit_setup = make_fit_setup(function_dictionary,key)
-    fit_setup['p0'] = [k_tot[n],c_tot[n]] # mean values to start the fitting from.
-    
+       
     return fit_setup 
 
 
@@ -63,7 +94,9 @@ def fit_vbin_function(data, vbins, zbins, fit_setup,
                       even_sampling=True):
     
     start_time = time.time()
-
+    
+    min_fv = 10**(min_log_fv)
+    
     redshift = data['REDSHIFT_1']
     fv = question + '_' + answer +'_weighted_fraction'
     
@@ -97,10 +130,10 @@ def fit_vbin_function(data, vbins, zbins, fit_setup,
             D = data_z[[fv]]
             D.sort(fv)
             D['cumfrac'] = np.linspace(0, 1, n)
-                #D = D[D[fv] > min_fv]
+            D = D[D[fv] > min_fv]
             D['log10fv'] = np.log10(D[fv])
             if even_sampling:
-                D_fit_log10fv = np.log10(np.linspace(10**(min_log_fv), 1, 1000))
+                D_fit_log10fv = np.log10(np.linspace(10**(min_log_fv), 1, 100))
                 D = D[(D['log10fv'] > min_log_fv)] #& (D['log10fv'] < max_log_fv)]
                 indices = np.searchsorted(D['log10fv'], D_fit_log10fv)
                 D_fit = D[indices.clip(0, len(D)-1)]
@@ -112,8 +145,12 @@ def fit_vbin_function(data, vbins, zbins, fit_setup,
                                  D_fit['log10fv'].astype(np.float64),
                                  D_fit['cumfrac'].astype(np.float64)),
                            bounds=bounds, method='SLSQP')
+            
             p = res.x
             chi2nu = res.fun / (n - len(p))
+            
+            if res.success == False:
+               print('Fit not found for z={},v={}'.format(z,v))
                 
             means = [data_z['PETROMAG_MR'].mean(),
                      np.log10(data_z['PETROR50_R_KPC']).mean(),
@@ -309,7 +346,7 @@ def function_inversion(value,func,k,kb,c,cb):
     return x
   
   
-def debias(data,full_data z_base, k_func,c_func, kparams, cparams,
+def debias(data, z_base, k_func,c_func, kparams, cparams,
            question,answer,kmin,kmax,cmin,cmax,fit_setup):
     # Debias the dataset
     
