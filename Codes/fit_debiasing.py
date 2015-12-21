@@ -394,3 +394,33 @@ def debias(data, z_base, k_func,c_func, kparams, cparams,
     debiased[fv_nonzero] = fv_debiased
 
     return debiased
+
+
+def debias_by_fit(data,full_data,vbins,zbins,zbins_coarse,question,
+                  answer,function_dictionary,min_log_fv,coarse=False):
+
+    if coarse == True: # can choose whether to coarsely bin here.
+        zbins = zbins_coarse.copy()
+    
+    fit_setup = get_best_function(data,vbins,zbins_coarse,function_dictionary,
+                                  question,answer,min_log_fv)
+    
+    fit_vbin_results = fit_vbin_function(data, vbins, zbins, fit_setup,
+                                         question,answer,min_log_fv)
+    
+    fit_vbin_results = fit_vbin_function(data, vbins, zbins, fit_setup,
+                                         question,answer,min_log_fv)
+    
+    k_func,c_func = get_kc_functions(fit_vbin_results)
+    
+    kparams, cparams,dout, kmin, kmax, cmin, cmax = fit_mrz(fit_vbin_results,
+                                                            k_func,c_func,
+                                                            clip=2,plot=False)
+    # clip results here.
+    
+    debiased_fit = debias(full_data,0.03, k_func,c_func, kparams, cparams,
+                          question,answer,kmin,kmax,cmin,cmax,fit_setup)
+
+    # Debias ALL of the data 
+    
+    return debiased_fit,dout,fit_setup,zbins,fit_vbin_results
