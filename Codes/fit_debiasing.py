@@ -169,15 +169,6 @@ def fit_vbin_function(data, vbins, zbins, fit_setup,
     print('All bins fitted! {}s in total'.format(time.time()-start_time))
     
     return fit_vbin_results
-  
-  
-def kcfunc(x, A0, AM, AR, Az):#,nz):
-    # linear combination of (magnitude, size, redshift) + an offset
-    #logr = A0 + AM*(10**(x[0])) + AR*(x[1]) + Az*(x[2])
-    
-    logr = A0 + AM*(10**(x[0])) + AR*(x[1]) + Az*(x[2])
-    
-    return logr
 
 
 def fit_mrz(d, f_k, f_c, clip=None,plot=True):
@@ -200,8 +191,8 @@ def fit_mrz(d, f_k, f_c, clip=None,plot=True):
     k = d['k'].astype(np.float64)
     c = d['c'].astype(np.float64)
 
-    kp, kc = curve_fit(f_c, x, k, maxfev=100000)
-    cp, cc = curve_fit(f_k, x, c, maxfev=100000)
+    kp, kc = curve_fit(f_k, x, k, maxfev=100000)
+    cp, cc = curve_fit(f_c, x, c, maxfev=100000)
         
     kres = f_k(x, *kp) - k
     knormres = normalise(kres)
@@ -291,37 +282,33 @@ def get_kc_functions(fit_vbin_results):
 
     finite_select = (np.isfinite(fit_vbin_results['k'])) & (np.isfinite(fit_vbin_results['c']))
     fit_vbin_results_finite = fit_vbin_results[finite_select]
-    '''
+    
     for M_dependence in ['log','linear','exp']:
         for R_dependence in ['log','linear','exp']:
             for z_dependence in ['log','linear','exp']:
-    '''
 
+                '''
     for M_dependence in ['linear']:
         for R_dependence in ['linear']:
             for z_dependence in ['linear']:
+                '''
                 kcfunc = get_func(M_dependence,R_dependence,z_dependence)
-                kparams, cparams,dout, kmin, kmax, cmin, cmax = fit_mrz(fit_vbin_results_finite, kcfunc,
-                                                                        kcfunc,clip=None,plot=False)
-            
-                k_mean = np.mean(dout['k'])
-                k_std = np.std(dout['k'])
-                c_mean = np.mean(dout['c'])
-                c_std = np.mean(dout['c'])
-            
-                k_fit_residuals = dout['kf']-dout['k']
-                k_total_residual = normalise_tot(np.sum(k_fit_residuals[np.isfinite(k_fit_residuals)]),k_mean,k_std)
-                c_fit_residuals = dout['cf']-dout['c']
-                c_total_residual = normalise_tot(np.sum(c_fit_residuals[np.isfinite(c_fit_residuals)]),c_mean,c_std)
+                kparams, cparams,dout, kmin, kmax, cmin, cmax = fit_mrz(fit_vbin_results_finite, kcfunc, kcfunc,clip=None,plot=False)
+               
+                k_fit_residuals = (dout['kf']-dout['k'])**2
+                k_fit_residuals = k_fit_residuals[np.isfinite(k_fit_residuals)]
 
-                k_residuals[i] = k_total_residual
-                c_residuals[i] = c_total_residual
+                c_fit_residuals = (dout['cf']-dout['c'])**2
+                c_fit_residuals = c_fit_residuals[np.isfinite(c_fit_residuals)]
+
+                k_residuals[i] = np.mean(k_fit_residuals)
+                c_residuals[i] = np.mean(c_fit_residuals)
                 i = i+1
             
                 M_dependences.append(M_dependence)
                 R_dependences.append(R_dependence)
                 z_dependences.append(z_dependence)
-            
+
     k_residuals[np.isfinite(k_residuals) == False] = 10**8
     c_residuals[np.isfinite(c_residuals) == False] = 10**8
 
@@ -409,9 +396,6 @@ def debias_by_fit(data,full_data,vbins,zbins,zbins_coarse,question,
     
     fit_setup = get_best_function(data,vbins,zbins_coarse,function_dictionary,
                                   question,answer,min_log_fv)
-    
-    fit_vbin_results = fit_vbin_function(data, vbins, zbins, fit_setup,
-                                         question,answer,min_log_fv)
     
     fit_vbin_results = fit_vbin_function(data, vbins, zbins, fit_setup,
                                          question,answer,min_log_fv)
