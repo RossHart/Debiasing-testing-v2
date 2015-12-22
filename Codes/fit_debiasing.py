@@ -291,10 +291,15 @@ def get_kc_functions(fit_vbin_results):
 
     finite_select = (np.isfinite(fit_vbin_results['k'])) & (np.isfinite(fit_vbin_results['c']))
     fit_vbin_results_finite = fit_vbin_results[finite_select]
-
+    '''
     for M_dependence in ['log','linear','exp']:
         for R_dependence in ['log','linear','exp']:
             for z_dependence in ['log','linear','exp']:
+    '''
+
+    for M_dependence in ['linear']:
+        for R_dependence in ['linear']:
+            for z_dependence in ['linear']:
                 kcfunc = get_func(M_dependence,R_dependence,z_dependence)
                 kparams, cparams,dout, kmin, kmax, cmin, cmax = fit_mrz(fit_vbin_results_finite, kcfunc,
                                                                         kcfunc,clip=None,plot=False)
