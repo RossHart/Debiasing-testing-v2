@@ -53,7 +53,7 @@ def get_best_function(data,vbins,zbins,function_dictionary
                 print('Still failed to minimise!')    
         
         fit_vbin_results = fit_vbin_function(data,vbins,zbins,fit_setup,
-                                             question,answer,min_log_fv)
+                                             question,answer,min_log_fv,clip=None)
 
         finite_chisq = np.isfinite(fit_vbin_results['chi2nu'])
         # Deal with chisq nans here.
@@ -91,7 +91,7 @@ def chisq_fun(p, f, x, y):
 def fit_vbin_function(data, vbins, zbins, fit_setup,
                       question,answer,min_log_fv,
                       kc_fit_results=None,
-                      even_sampling=True):
+                      even_sampling=True,clip=2):
     
     start_time = time.time()
     
@@ -167,6 +167,22 @@ def fit_vbin_function(data, vbins, zbins, fit_setup,
                                     'R50', 'redshift', 'k', 'c', 'chi2nu'))
     
     print('All bins fitted! {}s in total'.format(time.time()-start_time))
+    # remove 'odd' fits.
+    if clip != None:
+        k_values = fit_vbin_results['k']
+        k_mean = np.mean(k_values)
+        k_std = np.std(k_values)
+        k_range = [k_mean-clip*k_std,k_mean+clip*k_std]
+        
+        c_values = fit_vbin_results['c']
+        c_mean = np.mean(c_values)
+        c_std = np.std(c_values)
+        c_range = [c_mean-clip*c_std,c_mean+clip*c_std]
+        
+        select = ((k_values > k_range[0]) & (k_values < k_range[1]) 
+                  & (c_values > c_range[0]) & (c_values < c_range[1]))
+
+        fit_vbin_results = fit_vbin_results[select]
     
     return fit_vbin_results
 
