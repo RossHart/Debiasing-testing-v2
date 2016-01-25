@@ -5,7 +5,10 @@ from sklearn.neighbors import NearestNeighbors
 from astropy.table import Table
 import matplotlib.pyplot as plt
 
+''' Code for binning the data in terms of Mr,R50 and z '''
+
 def voronoi_binning(R50, Mr,n_rect_bins=500, n_per_voronoi_bin=5000,save=False):
+    ''' Voronoi bin in terms of R50 and Mr'''
     
     rect_bin_val, R50_bin_edges, Mr_bin_edges = np.histogram2d(R50, Mr, n_rect_bins)
 
@@ -26,7 +29,7 @@ def voronoi_binning(R50, Mr,n_rect_bins=500, n_per_voronoi_bin=5000,save=False):
     R50_bins_range = R50_bins_max - R50_bins_min
     Mr_bins_range = Mr_bins_max - Mr_bins_min
     
-    # 'Ravel' out the coordinate bins (.'. length=n_bin*n_bin)
+    # 'Ravel' out the coordinate bins (length of this array = n_bin*n_bin)
     R50_bin_coords = R50_bin_centres.repeat(n_rect_bins).reshape(n_rect_bins, n_rect_bins).ravel()
     Mr_bin_coords = Mr_bin_centres.repeat(n_rect_bins).reshape(n_rect_bins, n_rect_bins).T.ravel()
 
@@ -43,7 +46,8 @@ def voronoi_binning(R50, Mr,n_rect_bins=500, n_per_voronoi_bin=5000,save=False):
     noise = np.sqrt(signal)
     targetSN = np.sqrt(n_per_voronoi_bin)
 
-    output = voronoi_2d_binning(x, y, signal, noise, targetSN, plot=0, quiet=1, wvt=True)
+    output = voronoi_2d_binning(x, y, signal, noise, targetSN, plot=0,
+				quiet=1, wvt=True)
     binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = output
 
     vbin = np.unique(binNum)
@@ -60,7 +64,8 @@ def voronoi_binning(R50, Mr,n_rect_bins=500, n_per_voronoi_bin=5000,save=False):
 
     # Populate elements of the rectangular grid with
     # the voronoi bin indices and counts
-    rect_bin_voronoi_bin = np.zeros(np.product(rect_bin_val.shape), np.int) - 1
+    rect_bin_voronoi_bin = (np.zeros(np.product(rect_bin_val.shape), np.int)
+			    - 1)
     rect_bin_voronoi_bin[ok_bin] = binNum
     rect_bin_count = np.zeros_like(rect_bin_voronoi_bin)
     rect_bin_count[ok_bin] = count
@@ -72,24 +77,20 @@ def voronoi_binning(R50, Mr,n_rect_bins=500, n_per_voronoi_bin=5000,save=False):
     rect_bins_table.meta['nperbin'] = n_per_voronoi_bin
     
     if save == True:
-        rect_bins_table.write(save_directory + 'rect_bins_table.fits', overwrite=True)
-        vbins_table.write(save_directory + 'vbins_table.fits', overwrite=True)
-        rect_vbins_table.write(save_directory + 'rect_vbins_table.fits', overwrite=True)
-        
-    #plt.hist(vbins_table['count_gals'],histtype='stepfilled',color='b',alpha=0.5,linewidth=0)
-    #ylims = plt.gca().get_ylim()
-    #plt.vlines(n_per_voronoi_bin,ylims[0],ylims[1],color='k',linewidth=3,linestyle='dotted')
-    #plt.ylabel('$N_{bin}$')
-    #plt.xlabel('$N_{gal}$')
-    
-    # rect_bins_table: contains all of the bin edges (len=N_bins)
-    # rect_vbins_table: has bin centre values + assigned v-bin (len=N_bins**2)
-    # vbins_table: for each bin, contains the number of gals, Mr+R50 mean
-    # values + the number of rectangular bins it is made up of (len=N_v-bins)
-    return rect_bins_table, vbins_table, rect_vbins_table, Mr_bins_min, Mr_bins_range, R50_bins_min, R50_bins_range
+        rect_bins_table.write(save_directory + 'rect_bins_table.fits',
+			      overwrite=True)
+        vbins_table.write(save_directory + 'vbins_table.fits',
+			  overwrite=True)
+        rect_vbins_table.write(save_directory + 'rect_vbins_table.fits',
+			       overwrite=True)
+
+    return (rect_bins_table, vbins_table, rect_vbins_table, Mr_bins_min,
+            Mr_bins_range, R50_bins_min, R50_bins_range)
   
   
 def redshift_binning(data,voronoi_bins,min_gals=100,coarse=False):
+    ''' Bin each of the voronoi bins in terms in to bins of equal sample sizes, 
+        each with >=min_gals galaxies'''
     
     redshift = data['REDSHIFT_1']
     z_bins = []
@@ -98,7 +99,7 @@ def redshift_binning(data,voronoi_bins,min_gals=100,coarse=False):
         inbin = voronoi_bins == N
         n_with_morph = np.sum(inbin)
         if coarse == True:
-            n_zbins = 4
+            n_zbins = 4 # Split into 4 bins per voronoi bin if 'coarse'
         else:
             n_zbins = n_with_morph/min_gals
         #n_zbins = 5
@@ -117,15 +118,20 @@ def redshift_binning(data,voronoi_bins,min_gals=100,coarse=False):
 def voronoi_assignment(data, rect_bins_table, rect_vbins_table,
                        Mr_bins_min, Mr_bins_range, R50_bins_min, R50_bins_range,
                        reassign=False):
+    ''' Assign each of the galaxies a voronoi bin. If reassign is True, then
+        even the galaxies not in the sample are given a voronoi bin'''
+  
+    # Load outputs from the 'voronoi_binning' module:
     R50_bin_edges = rect_bins_table['R50_bin_edges']
     Mr_bin_edges = rect_bins_table['Mr_bin_edges']
     n_R50_bins = len(R50_bin_edges) - 1
     n_Mr_bins = len(Mr_bin_edges) - 1
     
+    # Load R50, Mr data for each galaxy:
     R50 = np.log10(data['PETROR50_R_KPC'])
     Mr = data['PETROMAG_MR']
     
-    # get the R50 and Mr bin for each galaxy in the sample
+    # Get the R50 and Mr bin for each galaxy in the sample
     R50_bins = np.digitize(R50, bins=R50_bin_edges).clip(1, n_R50_bins)
     Mr_bins = np.digitize(Mr, bins=Mr_bin_edges).clip(1, n_Mr_bins)
 
@@ -137,7 +143,7 @@ def voronoi_assignment(data, rect_bins_table, rect_vbins_table,
     rect_bin_vbins = rect_vbins_table['vbin']
     voronoi_bins = rect_bin_vbins[rect_bins]
     
-    if reassign is True: # Find nearest bin if none available
+    if reassign is True: # Find nearest bin if none are available: 
         rect_bins_assigned = rect_vbins_table[rect_vbins_table['vbin'] != -1]
         R50_bin = rect_bins_assigned['R50']
         Mr_bin = rect_bins_assigned['Mr']
@@ -162,6 +168,8 @@ def voronoi_assignment(data, rect_bins_table, rect_vbins_table,
   
   
 def redshift_assignment(data,vbins,zbin_ranges):
+    ''' Assign a redshift bin to each galaxies (using the ranges from the 
+        redshift_binning function'''
     
     zbins = np.zeros(len(data))
     
@@ -174,71 +182,63 @@ def redshift_assignment(data,vbins,zbin_ranges):
     return zbins
   
   
-def bin_data(data,full_data,question,answer,n_vbins=30,signal=100,plot=True):
+def bin_data(data,full_data,question,answer,n_vbins=30,signal=100):
+    ''' This function applies all of the binning (voronoi and then redshift):'''
   
     raw_column = data[question + '_' + answer + '_weighted_fraction']
-    fv_nonzero = raw_column > 0 # Select only the non-zero data to add to the 'signal' for each bin.
-    
+    fv_nonzero = raw_column > 0 # Select only the non-zero data to add to the 
+    # 'signal' for each bin.
     R50 = data['PETROR50_R_KPC'][fv_nonzero]
+    Mr = data['PETROMAG_MR'][fv_nonzero]
     
-    npv = np.sum(fv_nonzero)/(n_vbins)
-    nrb = math.floor(np.sqrt(np.sum(fv_nonzero)))
+    npv = np.sum(fv_nonzero)/(n_vbins) # Number of galaxies in each voronoi bin.
+    nrb = math.floor(np.sqrt(np.sum(fv_nonzero))) # If we have too many
+    # rectangular bins, the code doesn't work correctly?
     
-    rect_bins_table,vbins_table,rect_vbins_table,Mr_bins_min,Mr_bins_range,R50_bins_min,R50_bins_range = voronoi_binning(np.log10(R50),
-                                                                                                                         data['PETROMAG_MR'][fv_nonzero],
-                                                                                                                         n_rect_bins=nrb,
-                                                                                                                         n_per_voronoi_bin=npv)
+    # Get voronoi bin values in Mr,R50 space:
+    (rect_bins_table,vbins_table,rect_vbins_table,
+     Mr_bins_min,Mr_bins_range,R50_bins_min,
+     R50_bins_range) = voronoi_binning(np.log10(R50),
+                                       Mr,
+                                       n_rect_bins=nrb,
+                                       n_per_voronoi_bin=npv)
     
-
-    vbins = voronoi_assignment(data[fv_nonzero],rect_bins_table,rect_vbins_table,Mr_bins_min,
+    # Now assign each of the galaxies in the sample to a voronoi bin:
+    vbins = voronoi_assignment(data[fv_nonzero],rect_bins_table,
+			       rect_vbins_table,Mr_bins_min,
                                Mr_bins_range, R50_bins_min, R50_bins_range)
+    # Get zbin ranges:
     zbin_ranges = redshift_binning(data[fv_nonzero],vbins,min_gals=signal)
-    zbin_ranges_coarse = redshift_binning(data[fv_nonzero],vbins,min_gals=None,coarse=True)
+    zbin_ranges_coarse = redshift_binning(data[fv_nonzero],vbins,min_gals=None,
+					  coarse=True)
     
+    # redo the voronoi binning, applying it to all of the data, not just those
+    # that contribute to the 'signal':
     vbins = voronoi_assignment(data, rect_bins_table, rect_vbins_table,
-                           Mr_bins_min, Mr_bins_range, R50_bins_min, R50_bins_range,
-                           reassign=True)
+                               Mr_bins_min, Mr_bins_range, R50_bins_min, 
+                               R50_bins_range, reassign=True)
     zbins = redshift_assignment(data,vbins,zbin_ranges)
     zbins_coarse = redshift_assignment(data,vbins,zbin_ranges_coarse)
     
+    # Assign each of the galaxies in the FULL sample a voronoi and redshift bin:
     vbins_all = voronoi_assignment(full_data, rect_bins_table, rect_vbins_table,
-                           Mr_bins_min, Mr_bins_range, R50_bins_min, R50_bins_range,
-                           reassign=True)
+                                   Mr_bins_min, Mr_bins_range, R50_bins_min, 
+                                   R50_bins_range, reassign=True)
     zbins_all = redshift_assignment(full_data,vbins,zbin_ranges)
     zbins_coarse_all = redshift_assignment(full_data,vbins,zbin_ranges_coarse)
     
+    # Print the number of voronoi bins, and the mean number of z-bins in each:
     N_v = np.unique(vbins)
     N_z = []
-    
     for v in N_v:
         zbins_v = zbins[vbins == v]
-        N_z.append(np.max(zbins_v))
-        
+        N_z.append(np.max(zbins_v))    
     print('{} voronoi bins'.format(len(N_v)))
     print('{} redshift bins per voronoi bin'.format(np.mean(N_z)))
-    
-    if plot == True:
-        
-        relative_r = [((T-T.min())/(T.max()-T.min())) for T in [vbins_table['R50'],vbins_table['Mr']]]
-        relative_r = relative_r[1]# + relative_r[1]
-        r_sort = np.argsort(relative_r)
+    # Try to have a 'caveat' if there aren't enough bins???? -->
+    if np.max(N_z) <= 2:
+        zbins = zbins_coarse.copy()
+        zbins_all = zbins_coarse_all.copy()
+        print('Using fixed width bins')
 
-        for N in np.unique(vbins)[r_sort]:
-            inbin = vbins == N
-            plt.plot(data['PETROR50_R_KPC'][inbin],data['PETROMAG_MR'][inbin], '.')
-    
-        for N in range(len(vbins_table)):
-            x_text_pos = 10**(vbins_table['R50'][N])
-            y_text_pos = vbins_table['Mr'][N]
-            plt.text(x_text_pos,y_text_pos,'{}'.format(N),
-                     color='w',horizontalalignment='center',
-                     verticalalignment='center')
-
-        plt.ylabel(r"$M_r$")
-        plt.xlabel(r"$R_{50}$ (kpc)")
-        plt.xscale('log')
-        _ = plt.axis((0.5, 60, -18, -25))
-        
-        plt.savefig('figures/voronoi_binning/{}_{}.png'.format(question,answer))
-        
     return vbins,zbins,zbins_coarse,vbins_all,zbins_all,zbins_coarse_all,vbins_table

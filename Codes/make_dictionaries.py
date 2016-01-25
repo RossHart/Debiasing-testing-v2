@@ -1,7 +1,9 @@
-# First include the functions to be used: #
 import params
 import numpy as np
 import math
+
+#-------------------------------------------------------------------------------
+'''List the functions (and their respective inverses)'''
 
 def f_logistic(x, k, c):
     # Function to fit the data bin output from the raw plot function
@@ -29,8 +31,9 @@ def i_f_exp_pow(y, k, c):
     x = np.zeros_like(y) - np.inf
     x[ok] = -(-np.log(y[ok]) /k[ok] )**(1.0/c[ok])
     return x
-  
-# Make the function dictionary:
+#-------------------------------------------------------------------------------
+'''This dictionary lists all of the functions and bounds to be used in the
+to fit the data'''
 
 function_dictionary = {}
 function_dictionary['func'] = {0: f_logistic,
@@ -57,11 +60,11 @@ function_dictionary['label'] = {0: 'logistic',
                                 1: 'exp. power'
                                 #2:'inverse'
                                  }
+#-------------------------------------------------------------------------------
+'''Make a dictionary of questions, answers, and which questions precede others
+'''
 
-# Make the question dictionary:
-
-questions = {}
-
+# List of questions in order:
 q = ['t01_smooth_or_features'
      ,'t02_edgeon'
      ,'t03_bar'
@@ -74,6 +77,7 @@ q = ['t01_smooth_or_features'
      ,'t10_arms_winding'
      ,'t11_arms_number']
 
+# Labels for each of the questions (for plotting):
 label_q = ['Smooth or features'
      ,'Edge on'
      ,'Bar'
@@ -86,6 +90,7 @@ label_q = ['Smooth or features'
      ,'Arm winding'
      ,'Arm number']
 
+# Answers for each of the questions in turn:
 a = [['a01_smooth','a02_features_or_disk','a03_star_or_artifact']
      ,['a04_yes','a05_no']
      ,['a06_bar','a07_no_bar']
@@ -98,6 +103,7 @@ a = [['a01_smooth','a02_features_or_disk','a03_star_or_artifact']
      ,['a28_tight','a29_medium','a30_loose']
      ,['a31_1','a32_2','a33_3','a34_4','a36_more_than_4','a37_cant_tell']]
 
+# Answer labels (for plotting):
 label_a = [['Smooth','Features','Artifact']
      ,['Yes','No']
      ,['Yes','No']
@@ -110,6 +116,7 @@ label_a = [['Smooth','Features','Artifact']
      ,['Tight','Medium','Loose']
      ,['1','2','3','4','5+','??']]
 
+# 'Previously answered questions' for each question in turn:
 pre_q = [None
          ,[0]
          ,[0,1]
@@ -122,6 +129,7 @@ pre_q = [None
          ,[0,1,3]
          ,[0,1,3]]
 
+# Required answers for each previously answered question:
 pre_a = [None
          ,[1]
          ,[1,1]
@@ -133,6 +141,11 @@ pre_a = [None
          ,[1,1]
          ,[1,1,0]
          ,[1,1,0]]
+
+#-------------------------------------------------------------------------------
+'''Put all of this together in a single dictionary called "questions" '''
+
+questions = {}
 
 for s in range(len(q)):
     
@@ -147,12 +160,17 @@ for s in range(len(q)):
                        ,'pre_questions': pq}
     
     if pre_a[s] is not None:
-        pa_array = [questions[q[v]]['answers'] for v in pre_q[s]]
-        answer_arrays = [pa_array[v] for v in range(len(pre_a[s]))]
-        answer_indices = [pre_a[s][v] for v in range(len(pre_a[s]))]
-        pa = [answer_arrays[v2][answer_indices[v2]] for v2 in range(len(answer_indices))]
+        pa_array = [questions[q[v]]['answers'] 
+		    for v in pre_q[s]]
+        answer_arrays = [pa_array[v] 
+			 for v in range(len(pre_a[s]))]
+        answer_indices = [pre_a[s][v] 
+			  for v in range(len(pre_a[s]))]
+        pa = [answer_arrays[v2][answer_indices[v2]] 
+	      for v2 in range(len(answer_indices))]
  
     else:
-        pa = None
+        pa = None # if there are no previous questions
     
     questions[q[s]].update({'pre_answers': pa})
+#-------------------------------------------------------------------------------
